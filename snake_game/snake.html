@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snake Game – Arcade Game</title>
+
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0f;
+      font-family: 'Orbitron', monospace;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 10px;
+      background: #0a0a0f;
+      width: 100%;
+      max-width: 500px;
+    }
+    h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 20px;
+      color: #00ff88;
+      text-shadow: 0 0 24px #00ff8855, 0 0 48px #00ff8822;
+      margin-bottom: 3px;
+      letter-spacing: 3px;
+    }
+    .subtitle {
+      font-size: 8px;
+      color: #00ff8866;
+      font-family: 'Press Start 2P', monospace;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
+    #screens { width: 100%; max-width: 500px; }
+    .screen { display: none; flex-direction: column; align-items: center; gap: 12px; }
+    .screen.active { display: flex; }
+
+    /*  Menu  */
+    .menu-card {
+      background: #111122;
+      border: 1px solid #00ff8833;
+      border-radius: 10px;
+      padding: 22px 30px;
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .menu-btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-radius: 7px;
+      border: 1px solid #00ff8855;
+      background: transparent;
+      color: #00ff88;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      letter-spacing: 1px;
+    }
+    .menu-btn:hover { background: #00ff8818; border-color: #00ff88; transform: translateX(4px); }
+    .menu-btn.primary { background: #00ff8818; border-color: #00ff88; }
+    .score-badge {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #ffcc00;
+      background: #ffcc0011;
+      border: 1px solid #ffcc0033;
+      border-radius: 5px;
+      padding: 6px 12px;
+      text-align: center;
+    }
+    .name-display { font-size: 9px; color: #666888; font-family: 'Orbitron', monospace; text-align: center; }
+    .label { font-size: 9px; color: #555788; font-family: 'Orbitron', monospace; letter-spacing: 1px; text-align: center; }
+
+    /*  Name input  */
+    .name-input {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 7px;
+      border: 1px solid #00ff8833;
+      background: #111122;
+      color: #00ff88;
+      width: 100%;
+      max-width: 280px;
+      outline: none;
+      text-align: center;
+    }
+    .name-input:focus { border-color: #00ff88; box-shadow: 0 0 12px #00ff8822; }
+
+    /*  HUD  */
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 360px;
+      padding: 5px 2px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .hud-item { font-family: 'Press Start 2P', monospace; font-size: 8px; }
+    .hud-score { color: #00ff88; }
+    .hud-hi    { color: #ffcc00; }
+    .hud-timer { color: #44aaff; min-width: 64px; text-align: center; }
+    .hud-timer.warn { color: #ff4466; animation: blink 0.5s step-end infinite; }
+    .hud-lives { display: flex; gap: 4px; align-items: center; }
+    .life-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ff4466;
+      display: inline-block;
+      transition: opacity 0.25s;
+    }
+    .life-dot.lost { opacity: 0.15; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    /*  Timer bar  */
+    .timer-bar-wrap {
+      width: 100%;
+      max-width: 360px;
+      height: 4px;
+      background: #111122;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .timer-bar {
+      height: 4px;
+      background: #44aaff;
+      border-radius: 2px;
+      transition: width 1s linear, background 0.3s;
+    }
+
+    /*  Canvas + overlay  */
+    #game-area { position: relative; margin-top: 6px; }
+
+canvas {
+  width: min(90vw, 420px);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border: 2px solid #00ff8833;
+  border-radius: 4px;
+  display: block;
+  background: #050510;
+}
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(5,5,16,0.88);
+      border-radius: 4px;
+    }
+    #overlay.active { display: flex; }
+    .ov-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 14px;
+      color: #00ff88;
+      text-shadow: 0 0 20px #00ff88;
+    }
+    .ov-title.red   { color: #ff4466; text-shadow: 0 0 20px #ff4466; }
+    .ov-title.blue  { color: #44aaff; text-shadow: 0 0 20px #44aaff; }
+    .ov-title.amber { color: #ffaa00; text-shadow: 0 0 20px #ffaa00; }
+    .ov-score { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #ffcc00; }
+    .ov-sub {
+      font-size: 9px;
+      color: #888aaa;
+      font-family: 'Orbitron', monospace;
+      letter-spacing: 1px;
+      text-align: center;
+      padding: 0 14px;
+    }
+    .ov-lives { display: flex; gap: 5px; }
+    .ov-btns { display: flex; gap: 8px; margin-top: 6px; }
+    .ov-btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 9px 16px;
+      border-radius: 7px;
+      border: 1px solid;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+    .ov-btn.green  { border-color: #00ff88; color: #00ff88; background: #00ff8811; }
+    .ov-btn.green:hover { background: #00ff8828; }
+    .ov-btn.gray   { border-color: #444; color: #888; background: transparent; }
+    .ov-btn.gray:hover { background: #1a1a2a; }
+
+    /*  Speed selector  */
+    .speed-row { display: flex; gap: 6px; justify-content: center; }
+    .spd-btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 8px;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 5px;
+      border: 1px solid #222;
+      background: transparent;
+      color: #444;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 1px;
+    }
+    .spd-btn.active { border-color: #00ff88; color: #00ff88; background: #00ff8811; }
+
+    /* D-pad (mobile)  */
+    .dpad {
+      display: none;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(2, 44px);
+      gap: 4px;
+      margin-top: 8px;
+    }
+@media (max-width: 480px) {
+  .hud {
+    font-size: 7px;
+    gap: 6px;
+    justify-content: center;
+  }
+}
+    @media (max-width: 480px) { .dpad { display: grid; } }
+    .dpad-btn {
+      background: #111122;
+      border: 1px solid #00ff8833;
+      border-radius: 6px;
+      color: #00ff88;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .dpad-btn:active { background: #00ff8818; }
+    .d-up    { grid-column: 2; grid-row: 1; }
+    .d-left  { grid-column: 1; grid-row: 2; }
+    .d-down  { grid-column: 2; grid-row: 2; }
+    .d-right { grid-column: 3; grid-row: 2; }
+    .start-hint {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      color: #333555;
+      margin-top: 2px;
+      text-align: center;
+    }
+
+    /*  Leaderboard  */
+    .lb-table { width: 100%; max-width: 340px; border-collapse: collapse; }
+    .lb-table td, .lb-table th { padding: 7px 10px; font-size: 9px; font-family: 'Orbitron', monospace; }
+    .lb-table th { color: #444666; border-bottom: 1px solid #1a1a2a; letter-spacing: 1px; }
+    .lb-table td { color: #8899bb; }
+    .lb-table tr:nth-child(1) td { color: #ffcc00; }
+    .lb-table tr:nth-child(2) td { color: #aaaaff; }
+    .lb-table tr:nth-child(3) td { color: #ff8866; }
+    .rank { font-family: 'Press Start 2P', monospace; font-size: 7px; }
+    .back-btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 9px 20px;
+      border-radius: 7px;
+      border: 1px solid #333;
+      color: #888;
+      background: transparent;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+    .back-btn:hover { background: #1a1a2a; border-color: #666; }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <h1>SNAKE</h1>
+  <div class="subtitle">ARCADE GAME</div>
+
+  <div id="screens">
+
+    <!--  SCREEN: MAIN MENU  -->
+    <div id="screen-menu" class="screen active">
+      <div id="welcome-msg" class="name-display">PLAYER: ANONYMOUS</div>
+      <div id="hi-score-badge" class="score-badge">BEST: 0</div>
+      <div class="menu-card">
+        <div class="label" style="margin-bottom:4px">SELECT OPTION</div>
+        <button class="menu-btn" onclick="showScreen('screen-name')">① ENTER NAME</button>
+        <button class="menu-btn primary" onclick="startGame()">② PLAY GAME</button>
+        <button class="menu-btn" onclick="showScreen('screen-lb')">③ LEADERBOARD</button>
+      </div>
+      <div class="speed-row">
+        <button class="spd-btn active" onclick="setSpeed(this,160)">SLOW</button>
+        <button class="spd-btn"        onclick="setSpeed(this,110)">NORMAL</button>
+        <button class="spd-btn"        onclick="setSpeed(this,65)">FAST</button>
+      </div>
+      <div class="start-hint">WASD / ARROW KEYS &nbsp;·&nbsp; 3 LIVES &nbsp;·&nbsp; 60s PER LIFE &nbsp;·&nbsp; +5s PER FRUIT</div>
+    </div>
+
+    <!--  SCREEN: NAME ENTRY  -->
+    <div id="screen-name" class="screen">
+      <div class="label">ENTER YOUR NAME</div>
+      <input id="name-input" class="name-input" maxlength="12" placeholder="YOUR NAME"
+             onkeydown="if(event.key==='Enter') saveName()"/>
+      <button class="menu-btn primary" onclick="saveName()" style="width:220px;text-align:center">CONFIRM ▶</button>
+      <button class="back-btn" onclick="showScreen('screen-menu')">← BACK</button>
+    </div>
+
+    <!--  SCREEN: GAME  -->
+    <div id="screen-game" class="screen">
+      <!-- HUD row -->
+      <div class="hud">
+        <span class="hud-item hud-score">SCORE: <span id="hud-score">0</span></span>
+        <span class="hud-item hud-timer" id="hud-timer">TIME: 60</span>
+        <div  class="hud-lives" id="hud-lives"></div>
+        <span class="hud-item hud-hi">BEST: <span id="hud-hi">0</span></span>
+      </div>
+      <!-- Timer bar (visual countdown strip) -->
+      <div class="timer-bar-wrap">
+        <div class="timer-bar" id="timer-bar"></div>
+      </div>
+      <!-- Canvas + overlay -->
+      <div id="game-area">
+        <canvas id="canvas" width="360" height="360"></canvas>
+        <div id="overlay">
+          <div class="ov-title" id="ov-title">LIFE LOST</div>
+          <div class="ov-lives" id="ov-lives-disp"></div>
+          <div class="ov-score" id="ov-score">SCORE: 0</div>
+          <div class="ov-sub"   id="ov-sub">KEEP GOING!</div>
+          <div class="ov-btns">
+            <button class="ov-btn green" id="ov-main-btn" onclick="overlayAction()">CONTINUE</button>
+            <button class="ov-btn gray"  onclick="showScreen('screen-menu')">MENU</button>
+          </div>
+        </div>
+      </div>
+      <!-- Mobile D-pad -->
+      <div class="dpad">
+        <button class="dpad-btn d-up"    ontouchstart="setDir('UP')">▲</button>
+        <button class="dpad-btn d-left"  ontouchstart="setDir('LEFT')">◀</button>
+        <button class="dpad-btn d-down"  ontouchstart="setDir('DOWN')">▼</button>
+        <button class="dpad-btn d-right" ontouchstart="setDir('RIGHT')">▶</button>
+      </div>
+    </div>
+
+    <!-- ── SCREEN: LEADERBOARD ── -->
+    <div id="screen-lb" class="screen">
+      <div class="label">HALL OF FAME</div>
+      <table class="lb-table">
+        <tr><th>#</th><th>NAME</th><th>SCORE</th><th>LIVES LEFT</th></tr>
+        <tbody id="lb-body"></tbody>
+      </table>
+      <button class="back-btn" onclick="showScreen('screen-menu')">← BACK</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // STEP 3 — CONSTANTS
+  const CELL      = 18;    // pixel size of each grid cell
+  const COLS      = 20;    // grid columns
+  const ROWS      = 20;    // grid rows
+  const MAX_LIVES = 3;     // lives per full game
+  const ROUND_TIME = 60;   // seconds per life
+  const TIME_BONUS = 5;    // seconds added per fruit eaten
+
+  // STEP 4 — STATE VARIABLES
+  let snake, dir, nextDir, fruit;
+  let score    = 0;
+  let hiScore  = 0;
+  let lives    = MAX_LIVES;
+  let timeLeft = ROUND_TIME;
+  let running  = false;
+  let speed    = 160;          // ms per game tick
+  let isGameOver  = false;
+  let overlayMode = 'life';    // 'life' | 'gameover'
+
+  let playerName = "ANONYMOUS";
+  let scores     = [];         // leaderboard array
+
+  // STEP 3 — CANVAS SETUP
+  let gameLoop  = null;   // setInterval handle for snake movement
+  let timerLoop = null;   // setInterval handle for countdown
+
+  const canvas = document.getElementById('canvas');
+  const ctx    = canvas.getContext('2d');
+  // Canvas dimensions are set in HTML: width="360" height="360"
+  // (COLS * CELL = 20 * 18 = 360)
+
+  // STEP 2 — SCREEN NAVIGATION
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if (id === 'screen-lb')   renderLB();
+    if (id === 'screen-menu') {
+      document.getElementById('welcome-msg').textContent  = 'PLAYER: ' + playerName;
+      document.getElementById('hi-score-badge').textContent = 'BEST: ' + hiScore;
+      clearInterval(gameLoop);
+      clearInterval(timerLoop);
+      running = false;
+    }
+  }
+
+  // Speed selector (menu)
+  function setSpeed(el, ms) {
+    speed = ms;
+    document.querySelectorAll('.spd-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Name entry
+  function saveName() {
+    const v = document.getElementById('name-input').value.trim().toUpperCase();
+    if (v) playerName = v;
+    showScreen('screen-menu');
+  }
+  // STEP 5 — LIVES HUD helpers
+  // Build the coloured dot row (filled = alive, faded = lost)
+  function buildLivesHUD() {
+    const el = document.getElementById('hud-lives');
+    el.innerHTML = '';
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const d = document.createElement('div');
+      d.className = 'life-dot' + (i >= lives ? ' lost' : '');
+      el.appendChild(d);
+    }
+  }
+
+  function buildLivesOverlay() {
+    const el = document.getElementById('ov-lives-disp');
+    el.innerHTML = '';
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const d = document.createElement('div');
+      d.className = 'life-dot' + (i >= lives ? ' lost' : '');
+      el.appendChild(d);
+    }
+  }
+
+  // STEP 5 — START FULL GAME (all 3 lives, score 0)
+  function startGame() {
+    showScreen('screen-game');
+    lives      = MAX_LIVES;
+    score      = 0;
+    isGameOver = false;
+    document.getElementById('hud-score').textContent = 0;
+    document.getElementById('hud-hi').textContent    = hiScore;
+    initRound();
+  }
+
+  // STEP 5 — INIT ROUND (reset snake + timer, keep score & lives)
+  function initRound() {
+    const mid = Math.floor(COLS / 2);
+    snake   = [{ x: mid, y: mid }, { x: mid - 1, y: mid }, { x: mid - 2, y: mid }];
+    dir     = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    timeLeft = ROUND_TIME;
+
+    spawnFruit();
+    document.getElementById('overlay').classList.remove('active');
+    buildLivesHUD();
+    updateTimerUI();
+
+    running = true;
+    clearInterval(gameLoop);
+    clearInterval(timerLoop);
+    gameLoop  = setInterval(tick,      speed);   // snake movement
+    timerLoop = setInterval(tickTimer, 1000);     // countdown
+  }
+
+  // Fruit spawn (random position, not on snake)
+  function spawnFruit() {
+    let pos;
+    do {
+      pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+    } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+    fruit = pos;
+  }
+
+  // STEP 6 — TIMER TICK (called every 1000ms)
+  function tickTimer() {
+    if (!running) return;
+    timeLeft--;
+    updateTimerUI();
+    if (timeLeft <= 0) loseLife('timeout');
+  }
+
+  // Update timer HUD text + animated bar + colour states
+  function updateTimerUI() {
+    const el  = document.getElementById('hud-timer');
+    el.textContent = 'TIME: ' + timeLeft;
+    el.className   = 'hud-item hud-timer' + (timeLeft <= 10 ? ' warn' : '');
+
+    const bar = document.getElementById('timer-bar');
+    const pct = Math.max(0, (timeLeft / ROUND_TIME) * 100);
+    bar.style.width      = pct + '%';
+    bar.style.background = timeLeft <= 10 ? '#ff4466'
+                         : timeLeft <= 20 ? '#ffaa00'
+                         :                  '#44aaff';
+  }
+
+  // STEP 4 — GAME TICK (snake movement, called every `speed` ms)
+  function tick() {
+    dir = { ...nextDir };
+
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    // Collision: wall or self
+    if (
+      head.x < 0 || head.x >= COLS ||
+      head.y < 0 || head.y >= ROWS ||
+      snake.some(s => s.x === head.x && s.y === head.y)
+    ) {
+      loseLife('crash');
+      return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x === fruit.x && head.y === fruit.y) {
+      // Ate fruit: grow, add score, bonus time
+      score += 10;
+      if (score > hiScore) hiScore = score;
+      document.getElementById('hud-score').textContent = score;
+      document.getElementById('hud-hi').textContent    = hiScore;
+      timeLeft = Math.min(ROUND_TIME, timeLeft + TIME_BONUS); // +5s bonus
+      spawnFruit();
+    } else {
+      snake.pop(); // normal move: remove tail
+    }
+
+    draw();
+  }
+
+  // STEP 5 — LOSE A LIFE
+  // reason: 'crash' | 'timeout'
+  function loseLife(reason) {
+    running = false;
+    clearInterval(gameLoop);
+    clearInterval(timerLoop);
+
+    lives--;
+    buildLivesHUD();
+
+    const ov      = document.getElementById('overlay');
+    const ovTitle = document.getElementById('ov-title');
+    const ovSub   = document.getElementById('ov-sub');
+    const ovBtn   = document.getElementById('ov-main-btn');
+
+    document.getElementById('ov-score').textContent = 'SCORE: ' + score;
+    buildLivesOverlay();
+
+    if (lives <= 0) {
+      // All lives gone → game over
+      isGameOver  = true;
+      overlayMode = 'gameover';
+      scores.push({ name: playerName, score, livesLeft: 0 });
+      scores.sort((a, b) => b.score - a.score);
+
+      ovTitle.textContent = 'GAME OVER';
+      ovTitle.className   = 'ov-title red';
+      ovSub.textContent   = score >= 100 ? 'LEGENDARY RUN!'
+                          : score >= 50  ? 'WELL PLAYED'
+                          :                'BETTER LUCK NEXT TIME';
+      ovBtn.textContent = 'RETRY';
+    } else {
+      // Lives remain → continue
+      overlayMode = 'life';
+      ovTitle.textContent = reason === 'timeout' ? 'TIME UP!' : 'CRASHED!';
+      ovTitle.className   = reason === 'timeout' ? 'ov-title amber' : 'ov-title blue';
+      ovSub.textContent   = lives + ' LIFE' + (lives > 1 ? 'S' : '') + ' REMAINING  ·  +5s PER FRUIT';
+      ovBtn.textContent = 'CONTINUE';
+    }
+
+    ov.classList.add('active');
+  }
+
+  // Overlay button action depends on state
+  function overlayAction() {
+    if (overlayMode === 'gameover') startGame();
+    else                            initRound();
+  }
+
+  // STEP 8 — INPUT: set direction (keyboard + mobile)
+  function setDir(d) {
+    const map = { UP:{x:0,y:-1}, DOWN:{x:0,y:1}, LEFT:{x:-1,y:0}, RIGHT:{x:1,y:0} };
+    const n   = map[d];
+    // Prevent 180° reversal
+    if (n.x === -dir.x && n.y === -dir.y) return;
+    nextDir = n;
+  }
+
+  document.addEventListener('keydown', e => {
+    if      (['ArrowUp',    'w', 'W'].includes(e.key) && dir.y !==  1) { nextDir = {x:0,  y:-1}; e.preventDefault(); }
+    else if (['ArrowDown',  's', 'S'].includes(e.key) && dir.y !== -1) { nextDir = {x:0,  y: 1}; e.preventDefault(); }
+    else if (['ArrowLeft',  'a', 'A'].includes(e.key) && dir.x !==  1) { nextDir = {x:-1, y: 0}; e.preventDefault(); }
+    else if (['ArrowRight', 'd', 'D'].includes(e.key) && dir.x !== -1) { nextDir = {x:1,  y: 0}; e.preventDefault(); }
+  });
+
+  // STEP 7 — RENDER (canvas draw called after every tick)
+  function draw() {
+    // 1. Background
+    ctx.fillStyle = '#050510';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Grid cells (dark squares)
+    for (let x = 0; x < COLS; x++) {
+      for (let y = 0; y < ROWS; y++) {
+        ctx.fillStyle = '#0b0b20';
+        ctx.fillRect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+      }
+    }
+
+    // 3. Fruit (red with glow + shine)
+    const fx = fruit.x * CELL, fy = fruit.y * CELL;
+    ctx.shadowColor = '#ff4466';
+    ctx.shadowBlur  = 14;
+    ctx.fillStyle   = '#ff4466';
+    ctx.beginPath();
+    ctx.roundRect(fx + 2, fy + 2, CELL - 4, CELL - 4, 3);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ff88aa66';
+    ctx.fillRect(fx + 4, fy + 4, 4, 3); // shine
+
+    // 4. Snake segments (gradient: cyan head → purple tail)
+    snake.forEach((seg, i) => {
+      const sx = seg.x * CELL, sy = seg.y * CELL;
+      const t  = i / Math.max(snake.length - 1, 1);  // 0=head, 1=tail
+      const r  = Math.round(t * 60);
+      const g  = Math.round(255 - t * 110);
+      const b  = Math.round(180 - t * 20);
+
+      ctx.shadowColor = `rgb(${r},${g},${b})`;
+      ctx.shadowBlur  = i === 0 ? 16 : 6;
+      ctx.fillStyle   = `rgb(${r},${g},${b})`;
+      ctx.beginPath();
+      ctx.roundRect(sx + 1, sy + 1, CELL - 2, CELL - 2, i === 0 ? 4 : 3);
+      ctx.fill();
+
+      // 5. Eyes on head
+      if (i === 0) {
+        ctx.shadowBlur = 0;
+        // Eye positions shift based on direction
+        const ex  = dir.x ===  1 ? sx + 11 : dir.x === -1 ? sx + 3 : sx + 4;
+        const ey  = dir.y ===  1 ? sy + 11 : dir.y === -1 ? sy + 3 : sy + 4;
+        const ex2 = dir.y !== 0 ? sx + 12 : ex;
+        const ey2 = dir.x !== 0 ? sy + 12 : ey;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(ex,  ey,  2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex2, ey2, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#000000';
+        ctx.beginPath(); ctx.arc(ex,  ey,  1, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex2, ey2, 1, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+
+    ctx.shadowBlur = 0;
+  }
+
+  // STEP 9 — LEADERBOARD RENDER
+  function renderLB() {
+    const tbody  = document.getElementById('lb-body');
+    const medals = ['★1', '★2', '★3'];
+    if (scores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#333555;font-size:9px;padding:20px">NO SCORES YET</td></tr>';
+      return;
+    }
+    tbody.innerHTML = scores.slice(0, 10).map((s, i) =>
+      `<tr>
+        <td class="rank">${medals[i] || i + 1}</td>
+        <td>${s.name}</td>
+        <td>${s.score}</td>
+        <td style="color:#44aaff">${s.livesLeft > 0 ? s.livesLeft + ' left' : 'none'}</td>
+      </tr>`
+    ).join('');
+  }
+
+  // Initial idle draw (so canvas isn't blank on the menu)
+  (function idleDraw() {
+    ctx.fillStyle = '#050510';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (let x = 0; x < COLS; x++) {
+      for (let y = 0; y < ROWS; y++) {
+        ctx.fillStyle = '#0b0b20';
+        ctx.fillRect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+      }
+    }
+  })();
+</script>
+</body>
+</html>
